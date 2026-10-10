@@ -1,0 +1,383 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"></head><body>
+<title>Scene Explorer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=Literata:opsz,wght@7..72,500;7..72,600&display=swap">
+<style>
+/* Layout: a working tool. Sticky header with tabs; explorer = film rail + scene list + decision detail. */
+:root{
+  --bg:#f3f5f6; --panel:#ffffff; --ink:#15212b; --muted:#56656f; --line:#d9e0e4;
+  --accent:#0f6e74; --accent-soft:#d8eeee; --warm:#b4532a; --warm-soft:#f6e3d9;
+  --good:#2f7d4a; --bad:#a63a3a; --bar:#c9d4da;
+  --f-display:'Literata', Georgia, serif; --f-body:'IBM Plex Sans', system-ui, sans-serif; --f-mono:'IBM Plex Mono', ui-monospace, monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#10171c; --panel:#18222a; --ink:#e6edf0; --muted:#97a7b0; --line:#2a3842;
+  --accent:#5cc3c4; --accent-soft:#163b3e; --warm:#e8946b; --warm-soft:#3c261c;
+  --good:#71c48e; --bad:#e58080; --bar:#34454f; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#10171c; --panel:#18222a; --ink:#e6edf0; --muted:#97a7b0; --line:#2a3842;
+  --accent:#5cc3c4; --accent-soft:#163b3e; --warm:#e8946b; --warm-soft:#3c261c;
+  --good:#71c48e; --bad:#e58080; --bar:#34454f; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.5;margin:0}
+.wrap{max-width:1320px;margin:0 auto;padding-inline:20px;padding-block:0 48px}
+header{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);border-bottom:1px solid var(--line)}
+.hdr{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px 24px;padding-block:16px 0}
+h1{font-family:var(--f-display);font-weight:600;font-size:26px;margin:0;text-wrap:balance}
+.sub{color:var(--muted);font-size:14px;flex:1;min-width:240px}
+nav{display:flex;gap:4px;margin-top:10px}
+nav button{font:500 14px var(--f-body);color:var(--muted);background:none;border:0;border-bottom:3px solid transparent;padding:8px 14px;cursor:pointer}
+nav button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
+nav button:focus-visible,button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+h2{font-family:var(--f-display);font-weight:600;font-size:21px;margin:0 0 8px;text-wrap:balance}
+h3{font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:0 0 8px;font-weight:600}
+.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.grid{display:grid;grid-template-columns:300px minmax(0,1fr) minmax(0,1.25fr);gap:20px;margin-top:20px;align-items:start}
+@media (max-width:1100px){.grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.rail{grid-column:1/-1}}
+@media (max-width:720px){.grid{grid-template-columns:minmax(0,1fr)}}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px;min-width:0}
+select,input[type=search]{width:100%;font:15px var(--f-body);padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--ink)}
+.stats{display:grid;grid-template-columns:1fr auto;gap:4px 12px;margin-top:12px;font-size:14px}
+.stats .k{color:var(--muted)}
+.ap{display:grid;grid-template-columns:84px 1fr 52px;gap:6px 8px;align-items:center;font-size:13px;margin-top:6px}
+.ap .track{height:8px;background:var(--bar);border-radius:4px;position:relative;overflow:hidden}
+.ap .fill{position:absolute;inset:0 auto 0 0;background:var(--accent);border-radius:4px}
+.ap .chance{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--warm)}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.chip{font:500 12px var(--f-body);padding:4px 10px;border-radius:999px;border:1px solid var(--line);background:var(--panel);color:var(--muted);cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent);color:var(--ink)}
+.list{max-height:68vh;overflow:auto;margin-top:10px;border-top:1px solid var(--line)}
+.row{display:grid;grid-template-columns:52px minmax(0,1fr) 56px;gap:8px;align-items:center;padding:8px 6px;border-bottom:1px solid var(--line);cursor:pointer;background:none;border-left:0;border-right:0;border-top:0;width:100%;text-align:left;color:var(--ink);font:inherit}
+.row:hover{background:var(--accent-soft)}
+.row[aria-current="true"]{background:var(--accent-soft);box-shadow:inset 3px 0 0 var(--accent)}
+.row .who{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row .meta{color:var(--muted);font-size:12px}
+.pill{display:inline-block;font:600 11px var(--f-mono);letter-spacing:.03em;padding:2px 7px;border-radius:5px;background:var(--bar);color:var(--ink)}
+.pill.act{background:var(--warm-soft);color:var(--warm)}
+.pill.none{background:transparent;border:1px solid var(--line);color:var(--muted)}
+.prob{font:500 13px var(--f-mono);text-align:right}
+.big{font-family:var(--f-display);font-size:24px;font-weight:600;margin:0}
+.scene{color:var(--muted);margin:2px 0 12px}
+.truth{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:10px 12px;border-radius:8px;background:var(--bg);margin-bottom:16px}
+.bars{display:grid;grid-template-columns:110px 1fr 56px;gap:10px 10px;align-items:center;margin-bottom:6px}
+.bars .lab{font-size:14px}
+.bars .lab small{display:block;color:var(--muted);font-size:11px;line-height:1.2}
+.bars .track{height:14px;background:var(--bar);border-radius:4px;position:relative}
+.bars .fill{position:absolute;inset:0 auto 0 0;border-radius:4px;background:var(--accent)}
+.bars .base{position:absolute;top:-4px;bottom:-4px;width:2px;background:var(--warm)}
+.legend{font-size:12px;color:var(--muted);margin:4px 0 16px}
+.legend i{display:inline-block;width:10px;height:10px;vertical-align:-1px;margin-right:4px;border-radius:2px}
+.tl{display:flex;flex-direction:column;gap:2px;font-size:13px;margin-bottom:16px}
+.ev{display:grid;grid-template-columns:62px minmax(0,1fr) 92px;gap:8px;padding:4px 6px;border-radius:5px}
+.ev:nth-child(odd){background:var(--bg)}
+.ev .c{color:var(--muted);font-family:var(--f-mono);font-size:12px}
+.ev .w{min-width:0;overflow-wrap:anywhere}
+.empty{color:var(--muted);font-style:italic;font-size:13px}
+.prose{max-width:76ch}
+.prose p,.prose li{line-height:1.6}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:16px;margin-top:16px}
+.verdict{font:600 12px var(--f-body);letter-spacing:.05em;text-transform:uppercase;padding:3px 8px;border-radius:5px;display:inline-block}
+.v-ok{background:color-mix(in srgb,var(--good) 18%,transparent);color:var(--good)}
+.v-warn{background:var(--warm-soft);color:var(--warm)}
+.v-bad{background:color-mix(in srgb,var(--bad) 18%,transparent);color:var(--bad)}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+th{font-size:12px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);font-weight:600}
+td.n{text-align:right;font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+.tbl{overflow-x:auto}
+code{font-family:var(--f-mono);font-size:13px;background:var(--bg);padding:1px 5px;border-radius:4px;overflow-wrap:anywhere}
+.check{display:grid;grid-template-columns:28px minmax(0,1fr);gap:4px 12px;padding:14px 0;border-bottom:1px solid var(--line)}
+.check:last-child{border-bottom:0}
+.check .num{font:600 15px var(--f-mono);color:var(--accent)}
+.check p{margin:4px 0 0}
+.sev{font:600 11px var(--f-body);letter-spacing:.05em;text-transform:uppercase;margin-left:8px}
+.sev.hi{color:var(--bad)} .sev.md{color:var(--warm)} .sev.lo{color:var(--muted)}
+section[hidden]{display:none}
+.note{font-size:13px;color:var(--muted)}
+@media (prefers-reduced-motion:no-preference){.fill{transition:width .25s ease}}
+.chat{margin-top:20px;padding-top:16px;border-top:1px solid var(--line)}
+.msgs{display:flex;flex-direction:column;gap:8px;max-height:340px;overflow:auto;margin-bottom:10px}
+.msg{padding:9px 12px;border-radius:10px;white-space:pre-wrap;overflow-wrap:anywhere;font-size:14px;max-width:92%}
+.msg.user{align-self:flex-end;background:var(--accent-soft)}
+.msg.assistant{align-self:flex-start;background:var(--bg);border:1px solid var(--line)}
+.suggest{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.askrow{display:flex;gap:8px}
+.askrow input{flex:1;min-width:0;font:15px var(--f-body);padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--ink)}
+.btn{font:600 14px var(--f-body);padding:8px 16px;border-radius:8px;border:1px solid var(--accent);background:var(--accent);color:var(--panel);cursor:pointer}
+.btn.ghost{background:none;color:var(--accent)}
+.btn:disabled{opacity:.5;cursor:default}
+</style>
+
+<header><div class="wrap">
+  <div class="hdr">
+    <h1>Scene Explorer</h1>
+    <div class="sub">Held-out scenes from all 51 MovieGraphs films. For each pair, four models give the chance that A acts on B, using only what happened before the scene.</div>
+  </div>
+  <nav role="tablist">
+    <button role="tab" id="t-explore" aria-selected="true" data-tab="explore">Explore scenes</button>
+    <button role="tab" id="t-engine" aria-selected="false" data-tab="engine">Is order working?</button>
+    <button role="tab" id="t-about" aria-selected="false" data-tab="about">About the project</button>
+    <button role="tab" id="t-team" aria-selected="false" data-tab="team">Team notes</button>
+  </nav>
+</div></header>
+
+<main class="wrap">
+<!-- ============================ EXPLORER ============================ -->
+<section id="explore">
+  <div class="grid">
+    <div class="panel rail">
+      <h3>Film</h3>
+      <select id="film" aria-label="Film"></select>
+      <div class="stats" id="filmstats"></div>
+      <h3 style="margin-top:16px">How well each model ranks this film's scenes</h3>
+      <div id="filmap"></div>
+      <p class="note" style="margin-top:8px">PR-AUC on this film's held-out decisions. The orange tick is chance (the share of decisions with an interaction).</p>
+    </div>
+
+    <div class="panel">
+      <h3>Decisions in the last 30% of the film</h3>
+      <input type="search" id="q" placeholder="Filter by character name" aria-label="Filter by character">
+      <div class="chips" role="group" aria-label="Show">
+        <button class="chip" aria-pressed="true" data-f="all">All</button>
+        <button class="chip" aria-pressed="false" data-f="act">A acted on B</button>
+        <button class="chip" aria-pressed="false" data-f="miss">Confident misses</button>
+        <button class="chip" aria-pressed="false" data-f="order">Order changed the answer</button>
+      </div>
+      <div class="list" id="rows"></div>
+      <p class="note" id="rowcount"></p>
+    </div>
+
+    <div class="panel" id="detail" aria-live="polite"></div>
+  </div>
+</section>
+
+<!-- ============================ ENGINE ============================ -->
+<section id="engine" hidden>
+  <div class="prose" style="margin-top:24px">
+    <h2>Is the order machinery actually working?</h2>
+    <p>The real test says ordering other characters' events does not help. That only means something if the model <b>can</b> use order when order matters. So we kept the real history windows exactly as they are and replaced the label with one that is defined by order, so the right answer is known in advance.</p>
+  </div>
+  <div id="control"></div>
+  <div class="prose" style="margin-top:28px">
+    <h2>Then why is "unordered" level with, or slightly above, "ordered"?</h2>
+  </div>
+  <div class="cards" id="why"></div>
+  <div class="prose" style="margin-top:28px">
+    <h2>The real test, both splits</h2>
+    <p class="note">Detection task (does A act on B in this scene?), PR-AUC, mean of 3 seeds. A difference counts only if the 95% movie-bootstrap interval excludes zero and all seeds agree.</p>
+  </div>
+  <div class="panel tbl" style="margin-top:12px">
+    <table>
+      <tr><th>Model</th><th style="text-align:right">Within-movie<br>9,791 decisions</th><th style="text-align:right">Cross-movie<br>29,008 decisions</th></tr>
+      <tr><td>Chance</td><td class="n">0.296</td><td class="n">0.313</td></tr>
+      <tr><td>Pair history</td><td class="n">0.393</td><td class="n">0.407</td></tr>
+      <tr><td>+ relationship, shared-scene count</td><td class="n">0.408</td><td class="n">0.425</td></tr>
+      <tr><td>+ other characters' events, unordered</td><td class="n"><b>0.410</b></td><td class="n"><b>0.428</b></td></tr>
+      <tr><td>+ the same events, in order</td><td class="n">0.408</td><td class="n">0.425</td></tr>
+      <tr><td><b>Order effect</b> (ordered − unordered)</td><td class="n">−0.002 [−0.007, +0.003]</td><td class="n">−0.003 [−0.006, +0.0003]</td></tr>
+      <tr><td>Order effect, leak closed (exploratory)</td><td class="n">−0.001 [−0.007, +0.005]</td><td class="n">not run</td></tr>
+      <tr><td>Relationship + count effect</td><td class="n">+0.016 [+0.005, +0.028]</td><td class="n">+0.019 [+0.010, +0.027]</td></tr>
+      <tr><td>Pair history over chance</td><td class="n">+0.099 [+0.078, +0.119]</td><td class="n">+0.097 [+0.079, +0.115]</td></tr>
+    </table>
+  </div>
+</section>
+
+<!-- ============================ ABOUT ============================ -->
+<section id="about" hidden>
+  <div class="prose" style="margin-top:24px">
+    <h2>Can a model predict what movie characters do to each other?</h2>
+    <p>A course project for COMP 790-158 (Natural Language Processing, UNC Chapel Hill) by Vinir Rai and Anand Srinivasan.</p>
+    <p>Take two characters, A and B, who are both in a scene. Using only what happened earlier in the film, does A do anything to B in this scene: ask, inform, something positive or negative, pay attention to them, or a physical act? Our main question is whether the <b>order</b> of what other characters did to A and B helps with that prediction.</p>
+  </div>
+  <div class="cards">
+    <div class="panel"><h3>The data</h3><p style="margin:0">MovieGraphs: 51 films, about 7,600 clips, each annotated as a graph of who is present, who does what to whom, relationships and emotions. We turn it into 29,008 decisions, one per pair per shared scene, and drop all free text so a model cannot recognise a film.</p></div>
+    <div class="panel"><h3>The models</h3><p style="margin:0">Small Transformers trained from scratch on anonymous event tokens (A, B, C1…), with no pretrained weights. Four versions see more each time: the pair's own history; + their relationship and shared scenes; + other characters' events with the order removed; + the same events in order.</p></div>
+    <div class="panel"><h3>The test</h3><p style="margin:0">Train on the first 70% of every film and test on the last 30%, which is what this site shows. A difference only counts if its 95% interval over films excludes zero and every random seed agrees. We wrote the order test down before running it.</p></div>
+  </div>
+  <div class="prose" style="margin-top:28px">
+    <h2>What we found</h2>
+    <ul>
+      <li><b>The pair's own history helps a lot.</b> PR-AUC 0.39 against 0.30 for chance.</li>
+      <li><b>Their relationship and how many scenes they've shared</b> add a small, significant amount.</li>
+      <li><b>Other characters' events barely help, and their order does not help at all,</b> within films or across films.</li>
+      <li><b>The model can learn order</b> when a task needs it (0.97 against 0.70). So the null result comes from the data, not a broken model. See "Is order working?".</li>
+    </ul>
+    <h2>How to read the explorer</h2>
+    <p>Pick a film. Each row is a pair in a held-out scene, with the in-order model's chance that A acts on B. Click a row to see what happened, all four models' predictions and the history they saw. "Confident misses" shows where the models were most sure and wrong; "Order changed the answer" shows where ordering flipped the call.</p>
+    <p class="note">Data: Vicol et al., <i>MovieGraphs: Towards Understanding Human-Centric Situations from Videos</i>, CVPR 2018. Character names, scene labels and interaction verbs come from that dataset. Predictions are precomputed, mean of 3 seeds.</p>
+  </div>
+</section>
+
+<!-- ============================ TEAM NOTES ============================ -->
+<section id="team" hidden>
+  <div class="prose" style="margin-top:24px">
+    <h2>Team notes</h2>
+    <p>Notes for the project team. Enter the passphrase to read them.</p>
+  </div>
+  <form id="unlockf" class="panel" style="margin-top:12px;max-width:520px;display:flex;gap:8px;flex-wrap:wrap">
+    <label for="pass" class="note" style="flex-basis:100%">Passphrase</label>
+    <input id="pass" type="password" autocomplete="current-password" style="flex:1;min-width:0;font:15px var(--f-body);padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--ink)">
+    <button class="btn" id="unlockb" type="submit">Unlock</button>
+    <p class="note" id="unlockmsg" style="flex-basis:100%;margin:4px 0 0"></p>
+  </form>
+  <div id="teamnotes" hidden>
+    <div class="prose" style="margin-top:20px">
+      <h2>Where the code can break, and what to check by hand</h2>
+      <p>Every bug this project has found so far produced believable numbers and no crash. Read these places line by line, in priority order. Paths are relative to <code>socio-temp/</code>.</p>
+    </div>
+    <div class="panel" id="checks" style="margin-top:12px"></div>
+  </div>
+</section>
+</main>
+
+<script>
+const $ = s => document.querySelector(s);
+const COND = [["pair","Pair history"],["static","+ relationship"],["orderless","+ others, unordered"],["temporal","+ others, in order"]];
+const COND_SUB = {pair:"A↔B events only",static:"+ shared-scene count",orderless:"order removed",temporal:"order kept"};
+let DATA=null, film=null, cur=null, filt="all", query="";
+
+function ap(p, y){ // average precision, same definition as train.average_precision
+  const o = p.map((v,i)=>[v,i]).sort((a,b)=>b[0]-a[0]); let h=0, s=0, n=0;
+  o.forEach(([v,i],k)=>{ if(y[i]){h++; s+=h/(k+1); n++;} }); return n? s/n : NaN;
+}
+const esc = s => String(s).replace(/[&<>"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const pct = v => (v*100).toFixed(0)+"%";
+
+function tabs(){
+  document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{
+    document.querySelectorAll("nav button").forEach(x=>x.setAttribute("aria-selected", x===b));
+    ["explore","engine","about","team"].forEach(id=>$("#"+id).hidden = id!==b.dataset.tab);
+    try{ localStorage.setItem("tab", b.dataset.tab);}catch(e){}
+  });
+  let t=null; try{ t=localStorage.getItem("tab"); }catch(e){}
+  const h=location.hash.slice(1); if(["explore","engine","about","team"].includes(h)) t=h;
+  if(t){ const b=document.querySelector(`nav button[data-tab="${t}"]`); if(b) b.click(); }
+}
+
+function pickFilm(id){
+  film = DATA.films[id]; cur = null;
+  const R = film.rows, y = R.map(r=>r.t!=="NO_INTERACTION"?1:0), prev = y.reduce((a,b)=>a+b,0)/y.length;
+  const scenes = new Set(R.map(r=>r.c)).size;
+  $("#filmstats").innerHTML = `<span class="k">Held-out scenes</span><span class="mono">${scenes}</span>
+    <span class="k">Pair decisions</span><span class="mono">${R.length}</span>
+    <span class="k">A acted on B</span><span class="mono">${pct(prev)}</span>`;
+  const aps = COND.map(([c])=>ap(R.map(r=>r.p[c]), y));
+  $("#filmap").innerHTML = `<div class="ap">${COND.map(([c,l],i)=>`<span>${l.replace("+ ","")}</span>
+    <span class="track"><span class="fill" style="width:${(aps[i]*100).toFixed(1)}%"></span><span class="chance" style="left:${(prev*100).toFixed(1)}%"></span></span>
+    <span class="mono" style="text-align:right">${isNaN(aps[i])?"–":aps[i].toFixed(3)}</span>`).join("")}</div>`;
+  renderRows();
+}
+
+function visibleRows(){
+  const N = film.chars; let R = film.rows.map((r,i)=>({...r,i}));
+  if(query){ const q=query.toLowerCase(); R = R.filter(r=>(N[r.a]+" "+N[r.b]).toLowerCase().includes(q)); }
+  if(filt==="act") R = R.filter(r=>r.t!=="NO_INTERACTION");
+  if(filt==="miss") R = R.filter(r=>{const p=(r.p.orderless+r.p.temporal)/2, y=r.t!=="NO_INTERACTION"; return (y&&p<0.35)||(!y&&p>0.65);})
+                       .sort((a,b)=>Math.abs((b.p.orderless+b.p.temporal)/2-0.5)-Math.abs((a.p.orderless+a.p.temporal)/2-0.5));
+  if(filt==="order") R = R.filter(r=>(r.p.temporal>=.5)!==(r.p.orderless>=.5))
+                        .sort((a,b)=>Math.abs(b.p.temporal-b.p.orderless)-Math.abs(a.p.temporal-a.p.orderless));
+  return R;
+}
+
+function renderRows(){
+  const N = film.chars, R = visibleRows();
+  $("#rows").innerHTML = R.slice(0,400).map(r=>`<button class="row" data-i="${r.i}" aria-current="${cur===r.i}">
+      <span class="mono meta">scene ${r.c}</span>
+      <span class="who">${esc(N[r.a])} → ${esc(N[r.b])}<br><span class="meta">${esc(r.sc)}</span></span>
+      <span class="prob">${pct(r.p.temporal)}</span></button>`).join("") || `<p class="empty" style="padding:12px 6px">No decisions match.</p>`;
+  $("#rowcount").textContent = `${R.length} decision${R.length===1?"":"s"}${R.length>400?" (first 400 shown)":""}. Right column: chance of an interaction from the in-order model.`;
+  document.querySelectorAll(".row").forEach(b=>b.onclick=()=>{cur=+b.dataset.i; renderDetail(); document.querySelectorAll(".row").forEach(x=>x.setAttribute("aria-current", x===b));});
+  if(cur===null && R.length){ cur=R[0].i; renderDetail(); document.querySelector(".row")?.setAttribute("aria-current","true"); }
+  if(!R.length) $("#detail").innerHTML = `<p class="empty">Pick a decision to see the history and the predictions.</p>`;
+}
+
+function evRows(list, N, A, B){
+  if(!list.length) return `<p class="empty">None before this scene.</p>`;
+  return `<div class="tl">${list.slice().reverse().map(([c,s,d,k])=>{
+    const nm = x => x===A||x===B ? `<b>${esc(N[x])}</b>` : esc(N[x]);
+    return `<div class="ev"><span class="c">scene ${c}</span><span class="w">${nm(s)} → ${nm(d)}</span><span><span class="pill">${DATA.classes[k]}</span></span></div>`;}).join("")}</div>`;
+}
+
+function renderDetail(){
+  const r = film.rows[cur], N = film.chars, acted = r.t!=="NO_INTERACTION";
+  const prev = film.rows.filter(x=>x.t!=="NO_INTERACTION").length / film.rows.length;
+  $("#detail").innerHTML = `
+    <p class="big">${esc(N[r.a])} → ${esc(N[r.b])}</p>
+    <p class="scene">Scene ${r.c} · ${esc(r.sc)}${r.si&&r.si!=="nan"?" · "+esc(r.si):""}</p>
+    <div class="truth"><span class="note">What happened:</span>
+      ${acted ? `<span class="pill act">${r.t}</span>${r.v.length?`<span>${r.v.map(esc).join(", ")}</span>`:""}` : `<span class="pill none">NO INTERACTION</span><span class="note">${esc(N[r.a])} did not act on ${esc(N[r.b])} in this scene</span>`}
+    </div>
+    <h3>Chance that A acts on B, by model</h3>
+    ${COND.map(([c,l])=>`<div class="bars"><span class="lab">${l}<small>${COND_SUB[c]}</small></span>
+      <span class="track"><span class="fill" style="width:${(r.p[c]*100).toFixed(1)}%;background:${(r.p[c]>=.5)===acted?"var(--accent)":"var(--warm)"}"></span><span class="base" style="left:${(prev*100).toFixed(1)}%"></span></span>
+      <span class="prob">${pct(r.p[c])}</span></div>`).join("")}
+    <p class="legend"><i style="background:var(--accent)"></i>right side of 50% &nbsp; <i style="background:var(--warm)"></i>wrong side of 50% &nbsp; Orange tick: this film's base rate. Mean of 3 seeds.</p>
+    <div class="stats" style="margin:0 0 16px"><span class="k">Relationship (latest)</span><span>${esc(r.rel||"none recorded")}</span>
+      <span class="k">Scenes shared before</span><span class="mono">${r.co}</span>
+      <span class="k">A↔B events before</span><span class="mono">${r.nf}</span>
+      <span class="k">Other characters' events with A or B</span><span class="mono">${r.nh}</span></div>
+    <h3>A↔B history (latest 8, newest first)</h3>${evRows(r.hf, N, r.a, r.b)}
+    <h3>Other characters with A or B (latest 10, newest first)</h3>${evRows(r.h1, N, r.a, r.b)}
+    <p class="note">The models see these as anonymous tokens (A, B, C1…), never names. Only the "in order" model sees the order and timing of the second list.</p>`;
+}
+
+
+
+function renderControl(C){
+  const el = $("#control");
+  if(!C){ el.innerHTML = `<div class="panel" style="margin-top:12px"><p class="empty">Positive-control results not loaded.</p></div>`; return; }
+  const mean = a => a.reduce((s,x)=>s+x,0)/a.length;
+  const T = [["T1_last_third_party","Was the most recent third-party act positive or negative?","Only order can answer this: both kinds of act are in every window, so the set of events is the same either way."],
+             ["T2_third_party_after_focal","Did anything happen to A or B after their own last interaction?","A model with no order at all cannot answer this. Tests whether \"unordered\" still carries timing through the A↔B positions."]];
+  el.innerHTML = `<div class="cards">${T.map(([k,q,why])=>{ const t=C[k]; if(!t) return "";
+    const m = c => mean(t[c].map(s=>s.roc_auc)), sd = c => { const v=t[c].map(s=>s.roc_auc), mu=mean(v); return Math.sqrt(v.reduce((s,x)=>s+(x-mu)**2,0)/(v.length-1)); };
+    return `<div class="panel"><h3>${k.startsWith("T1")?"Test 1":"Test 2"}</h3><p style="margin:0 0 6px;font-weight:600">${q}</p><p class="note" style="margin:0 0 12px">${why} ${t.n_train.toLocaleString()} train / ${t.n_test.toLocaleString()} test windows.</p>
+      ${[["bag","No order anywhere"],["orderless","\"Unordered\" (as in the real test)"],["orderless_strict","\"Unordered\", leak closed"],["temporal","\"In order\" (as in the real test)"]].filter(([c])=>t[c]).map(([c,l])=>`<div class="bars"><span class="lab">${l}</span>
+      <span class="track"><span class="fill" style="width:${((m(c)-0.5)/0.5*100).toFixed(1)}%"></span></span><span class="prob">${m(c).toFixed(3)}</span></div>`).join("")}
+      <p class="note">ROC-AUC, mean of ${t.temporal.length} seeds (bar starts at 0.5 = chance). Seed spread ≤ ${Math.max(...["bag","orderless","orderless_strict","temporal"].filter(c=>t[c]).map(sd)).toFixed(3)}.</p>
+      <p style="margin:8px 0 0">${C.verdict?.[k]||""}</p></div>`;}).join("")}</div>`;
+}
+
+function renderWhy(W){ $("#why").innerHTML = W.map(w=>`<div class="panel"><span class="verdict ${w.v}">${w.tag}</span><h2 style="font-size:18px;margin-top:8px">${w.h}</h2><p style="margin:0">${w.b}</p></div>`).join(""); }
+function renderChecks(L){ $("#checks").innerHTML = L.map((c,i)=>`<div class="check"><span class="num">${i+1}</span><div><b>${c.h}</b><span class="sev ${c.s}">${{hi:"high",md:"medium",lo:"low"}[c.s]}</span><br><code>${c.where}</code><p>${c.b}</p><p class="note"><b>How to check:</b> ${c.how}</p></div></div>`).join(""); }
+
+async function boot(){
+  tabs();
+  const [D, X] = await Promise.all([fetch("data.json").then(r=>r.json()), fetch("analysis.json").then(r=>r.json()).catch(()=>null)]);
+  DATA = D;
+  const ids = Object.keys(D.films).sort((a,b)=>D.films[a].title.localeCompare(D.films[b].title));
+  $("#film").innerHTML = ids.map(id=>`<option value="${id}">${esc(D.films[id].title)}</option>`).join("");
+  let start = ids.find(i=>D.films[i].title.startsWith("Juno")) || ids[0];
+  try{ const s=localStorage.getItem("film"); if(s && D.films[s]) start=s; }catch(e){}
+  $("#film").value = start;
+  $("#film").onchange = e => { try{localStorage.setItem("film", e.target.value);}catch(_){} pickFilm(e.target.value); };
+  $("#q").oninput = e => { query = e.target.value.trim(); cur=null; renderRows(); };
+  document.querySelectorAll(".chips .chip").forEach(b=>b.onclick=()=>{ filt=b.dataset.f; cur=null; document.querySelectorAll(".chips .chip").forEach(x=>x.setAttribute("aria-pressed", x===b)); renderRows(); });
+  pickFilm(start);
+  if(X){ renderControl(X.control); renderWhy(X.why); } else renderControl(null);
+}
+// Team notes: decrypt team.enc.json in the browser (AES-GCM, key from PBKDF2-SHA256 of the passphrase).
+async function unlockNotes(pass){
+  const E = await fetch("team.enc.json").then(r=>r.json());
+  const b = s => Uint8Array.from(atob(s), c=>c.charCodeAt(0));
+  const base = await crypto.subtle.importKey("raw", new TextEncoder().encode(pass), "PBKDF2", false, ["deriveKey"]);
+  const key = await crypto.subtle.deriveKey({name:"PBKDF2", salt:b(E.salt), iterations:E.iter, hash:"SHA-256"}, base, {name:"AES-GCM", length:256}, false, ["decrypt"]);
+  const pt = await crypto.subtle.decrypt({name:"AES-GCM", iv:b(E.iv)}, key, b(E.ct));
+  return JSON.parse(new TextDecoder().decode(pt));
+}
+document.addEventListener("submit", async e => {
+  if(e.target.id !== "unlockf") return;
+  e.preventDefault();
+  const msg = $("#unlockmsg"), btn = $("#unlockb");
+  btn.disabled = true; msg.textContent = "Unlocking…";
+  try{
+    const T = await unlockNotes($("#pass").value);
+    renderChecks(T.checks); $("#teamnotes").hidden = false; $("#unlockf").hidden = true; msg.textContent = "";
+  }catch(err){
+    msg.textContent = "That passphrase didn't unlock the notes. Check it and try again.";
+  }finally{ btn.disabled = false; }
+});
+boot();
+</script>
+
+</body></html>

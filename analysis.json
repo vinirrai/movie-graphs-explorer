@@ -1,0 +1,175 @@
+{
+ "control": {
+  "T1_last_third_party": {
+   "n_train": 16384,
+   "n_test": 8943,
+   "pos_rate": 0.6162361623616236,
+   "bag": [
+    {
+     "seed": 0,
+     "roc_auc": 0.6938182069850551,
+     "acc": 0.657609303365761
+    },
+    {
+     "seed": 1,
+     "roc_auc": 0.69731827931338,
+     "acc": 0.6712512579671251
+    },
+    {
+     "seed": 2,
+     "roc_auc": 0.6988636892352189,
+     "acc": 0.6618584367661858
+    }
+   ],
+   "orderless": [
+    {
+     "seed": 0,
+     "roc_auc": 0.6913986711890904,
+     "acc": 0.664430280666443
+    },
+    {
+     "seed": 1,
+     "roc_auc": 0.6958788240429503,
+     "acc": 0.6759476685675948
+    },
+    {
+     "seed": 2,
+     "roc_auc": 0.6998981481833959,
+     "acc": 0.6627529911662753
+    }
+   ],
+   "temporal": [
+    {
+     "seed": 0,
+     "roc_auc": 0.9734704145428152,
+     "acc": 0.9064072458906407
+    },
+    {
+     "seed": 1,
+     "roc_auc": 0.978657592634185,
+     "acc": 0.91580006709158
+    },
+    {
+     "seed": 2,
+     "roc_auc": 0.9718180982810815,
+     "acc": 0.9055126914905512
+    }
+   ]
+  },
+  "T2_third_party_after_focal": {
+   "n_train": 16698,
+   "n_test": 9335,
+   "pos_rate": 0.802356722013926,
+   "bag": [
+    {
+     "seed": 0,
+     "roc_auc": 0.7359169045629042,
+     "acc": 0.7767541510444563
+    },
+    {
+     "seed": 1,
+     "roc_auc": 0.7351370390873468,
+     "acc": 0.7524370648098554
+    },
+    {
+     "seed": 2,
+     "roc_auc": 0.7387141663138928,
+     "acc": 0.7671130155329405
+    }
+   ],
+   "orderless": [
+    {
+     "seed": 0,
+     "roc_auc": 0.9609181528397394,
+     "acc": 0.9212640599892876
+    },
+    {
+     "seed": 1,
+     "roc_auc": 0.9599730806386836,
+     "acc": 0.9204070701660417
+    },
+    {
+     "seed": 2,
+     "roc_auc": 0.9618653235931558,
+     "acc": 0.9208355650776647
+    }
+   ],
+   "temporal": [
+    {
+     "seed": 0,
+     "roc_auc": 0.9913232096272898,
+     "acc": 0.9577932512051419
+    },
+    {
+     "seed": 1,
+     "roc_auc": 0.9907177772712307,
+     "acc": 0.9546866630958757
+    },
+    {
+     "seed": 2,
+     "roc_auc": 0.9922579699762285,
+     "acc": 0.9591858596679165
+    }
+   ],
+   "orderless_strict": [
+    {
+     "seed": 0,
+     "roc_auc": 0.912778881326864,
+     "acc": 0.8715586502410284
+    },
+    {
+     "seed": 1,
+     "roc_auc": 0.9121767053451576,
+     "acc": 0.8705945366898769
+    },
+    {
+     "seed": 2,
+     "roc_auc": 0.9118601495761286,
+     "acc": 0.8708087841456883
+    }
+   ]
+  },
+  "verdict": {
+   "T1_last_third_party": "<b>Passes.</b> Only the in-order model solves it (0.975). Both unordered versions score the same as no order at all (about 0.70), so they cannot see the order of what other characters did. The order machinery works.",
+   "T2_third_party_after_focal": "<b>Leak found, then closed.</b> The original \"unordered\" model reaches 0.961 against 0.737 for no order: it sees when other characters were active relative to A↔B's own events, through the A↔B position numbers. With positions counted among A↔B tokens only, it drops to 0.912. What remains is expected: both unordered versions also know how many scenes ago A and B last interacted."
+  }
+ },
+ "why": [
+  {
+   "tag": "Checked",
+   "v": "v-ok",
+   "h": "A leak in \"unordered\" was real, but it does not explain the result",
+   "b": "Test 2 showed \"unordered\" still saw some timing through the A↔B positions. We closed it and re-ran the real within-movie test: in order minus leak-closed unordered = −0.001 PR-AUC [−0.007, +0.005], all 3 seeds negative. Still no benefit from order."
+  },
+  {
+   "tag": "Not significant",
+   "v": "v-warn",
+   "h": "It is a tie, not a win",
+   "b": "Unordered leads by 0.002 PR-AUC within-movie and 0.003 cross-movie. All three seeds lean the same way, but both 95% intervals reach zero. The honest reading is no benefit from order, with a slight lean against it."
+  },
+  {
+   "tag": "Data",
+   "v": "v-warn",
+   "h": "Most of the order is inside a single scene",
+   "b": "68% of neighbouring third-party events in the model's window come from the same scene. Within a scene, events are sorted by timestamp, but summary events have no timestamp and are placed first, and 13% of interactions have none either. Much of what the ordered model is given is annotation order, which carries no story information."
+  },
+  {
+   "tag": "Design",
+   "v": "v-warn",
+   "h": "Unordered already knows which events are recent",
+   "b": "Both models see only the latest 48 third-party events, and 79% of windows have more than that. Which events are shown is itself a recency signal, so the unordered model gets most of what order would add."
+  },
+  {
+   "tag": "Small data",
+   "v": "v-warn",
+   "h": "The ordered model has more to learn from the same data",
+   "b": "It learns a position and a time-gap embedding for up to 48 extra tokens, from about 19,000 training windows in 4 epochs. Extra inputs that carry no real signal cost a little accuracy; that is the usual small-data penalty."
+  },
+  {
+   "tag": "Where the signal is",
+   "v": "v-ok",
+   "h": "Third-party events barely help, so their order cannot help much",
+   "b": "Pair history adds +0.099 PR-AUC over chance and the relationship adds +0.016, both significant. Adding other characters' events adds +0.005, not significant. Order can only refine information that is already weak."
+  }
+ ]
+}
