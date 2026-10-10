@@ -5,7 +5,7 @@ can a small Transformer, trained from scratch on annotated social events, predic
 one movie character will act on another in a scene, using only what happened earlier in
 the film?
 
-**Live page:** https://vinirrai.github.io/movie-graphs-explorer/ (once GitHub Pages is on)
+**Live page:** https://vinirrai.github.io/movie-graphs-explorer/
 
 ## What it shows
 
@@ -28,8 +28,3 @@ Built from the MovieGraphs annotations (Vicol et al., *MovieGraphs: Towards Unde
 Human-Centric Situations from Videos*, CVPR 2018). Character names, scene labels and
 interaction verbs in `data.json` come from that dataset and remain under its authors' terms;
 the MIT license here covers the page code only.
-
-## Turning on hosting
-
-Settings → Pages → Source: *Deploy from a branch* → Branch: `main`, folder `/ (root)` → Save.
-The site appears at the URL above within a minute or two.
