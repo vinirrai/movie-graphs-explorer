@@ -14,8 +14,7 @@ the film?
   (pair history; + relationship; + other characters' events, unordered; + the same events in
   order), and the history the models saw.
 - **Is order working?** A positive control showing the ordered model can learn order when
-  the label depends on it (ROC-AUC 0.97 vs 0.70), the leak we found in the unordered model,
-  and why ordering the social context still does not help on the real task.
+  the label depends on it (ROC-AUC 0.97 vs 0.70), and why ordering the social context still does not help on the real task.
 - **About the project.** The question, data, models and findings in plain English.
 - **Team notes.** Encrypted (AES-GCM, key from PBKDF2-SHA256 of a passphrase) and decrypted
   in the browser; only the project team has the passphrase.

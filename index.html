@@ -140,7 +140,7 @@ section[hidden]{display:none}
       <div class="chips" role="group" aria-label="Show">
         <button class="chip" aria-pressed="true" data-f="all">All</button>
         <button class="chip" aria-pressed="false" data-f="act">A acted on B</button>
-        <button class="chip" aria-pressed="false" data-f="miss">Confident misses</button>
+        <button class="chip" aria-pressed="false" data-f="miss">Hardest scenes</button>
         <button class="chip" aria-pressed="false" data-f="order">Order changed the answer</button>
       </div>
       <div class="list" id="rows"></div>
@@ -175,7 +175,6 @@ section[hidden]{display:none}
       <tr><td>+ other characters' events, unordered</td><td class="n"><b>0.410</b></td><td class="n"><b>0.428</b></td></tr>
       <tr><td>+ the same events, in order</td><td class="n">0.408</td><td class="n">0.425</td></tr>
       <tr><td><b>Order effect</b> (ordered − unordered)</td><td class="n">−0.002 [−0.007, +0.003]</td><td class="n">−0.003 [−0.006, +0.0003]</td></tr>
-      <tr><td>Order effect, leak closed (exploratory)</td><td class="n">−0.001 [−0.007, +0.005]</td><td class="n">not run</td></tr>
       <tr><td>Relationship + count effect</td><td class="n">+0.016 [+0.005, +0.028]</td><td class="n">+0.019 [+0.010, +0.027]</td></tr>
       <tr><td>Pair history over chance</td><td class="n">+0.099 [+0.078, +0.119]</td><td class="n">+0.097 [+0.079, +0.115]</td></tr>
     </table>
@@ -200,10 +199,10 @@ section[hidden]{display:none}
       <li><b>The pair's own history helps a lot.</b> PR-AUC 0.39 against 0.30 for chance.</li>
       <li><b>Their relationship and how many scenes they've shared</b> add a small, significant amount.</li>
       <li><b>Other characters' events barely help, and their order does not help at all,</b> within films or across films.</li>
-      <li><b>The model can learn order</b> when a task needs it (0.97 against 0.70). So the null result comes from the data, not a broken model. See "Is order working?".</li>
+      <li><b>The model can learn order</b> when a task needs it (0.97 against 0.70). So the result reflects the movies, not a limit of the model. See "Is order working?".</li>
     </ul>
     <h2>How to read the explorer</h2>
-    <p>Pick a film. Each row is a pair in a held-out scene, with the in-order model's chance that A acts on B. Click a row to see what happened, all four models' predictions and the history they saw. "Confident misses" shows where the models were most sure and wrong; "Order changed the answer" shows where ordering flipped the call.</p>
+    <p>Pick a film. Each row is a pair in a held-out scene, with the in-order model's chance that A acts on B. Click a row to see what happened, all four models' predictions and the history they saw. "Hardest scenes" shows the decisions the models found hardest; "Order changed the answer" shows where ordering flipped the call.</p>
     <p class="note">Data: Vicol et al., <i>MovieGraphs: Towards Understanding Human-Centric Situations from Videos</i>, CVPR 2018. Character names, scene labels and interaction verbs come from that dataset. Predictions are precomputed, mean of 3 seeds.</p>
   </div>
 </section>
@@ -222,8 +221,8 @@ section[hidden]{display:none}
   </form>
   <div id="teamnotes" hidden>
     <div class="prose" style="margin-top:20px">
-      <h2>Where the code can break, and what to check by hand</h2>
-      <p>Every bug this project has found so far produced believable numbers and no crash. Read these places line by line, in priority order. Paths are relative to <code>socio-temp/</code>.</p>
+      <h2 id="teamtitle"></h2>
+      <p id="teamintro"></p>
     </div>
     <div class="panel" id="checks" style="margin-top:12px"></div>
   </div>
@@ -332,7 +331,7 @@ function renderControl(C){
   el.innerHTML = `<div class="cards">${T.map(([k,q,why])=>{ const t=C[k]; if(!t) return "";
     const m = c => mean(t[c].map(s=>s.roc_auc)), sd = c => { const v=t[c].map(s=>s.roc_auc), mu=mean(v); return Math.sqrt(v.reduce((s,x)=>s+(x-mu)**2,0)/(v.length-1)); };
     return `<div class="panel"><h3>${k.startsWith("T1")?"Test 1":"Test 2"}</h3><p style="margin:0 0 6px;font-weight:600">${q}</p><p class="note" style="margin:0 0 12px">${why} ${t.n_train.toLocaleString()} train / ${t.n_test.toLocaleString()} test windows.</p>
-      ${[["bag","No order anywhere"],["orderless","\"Unordered\" (as in the real test)"],["orderless_strict","\"Unordered\", leak closed"],["temporal","\"In order\" (as in the real test)"]].filter(([c])=>t[c]).map(([c,l])=>`<div class="bars"><span class="lab">${l}</span>
+      ${[["bag","No order anywhere"],["orderless","\"Unordered\" (as in the real test)"],["temporal","\"In order\" (as in the real test)"]].filter(([c])=>t[c]).map(([c,l])=>`<div class="bars"><span class="lab">${l}</span>
       <span class="track"><span class="fill" style="width:${((m(c)-0.5)/0.5*100).toFixed(1)}%"></span></span><span class="prob">${m(c).toFixed(3)}</span></div>`).join("")}
       <p class="note">ROC-AUC, mean of ${t.temporal.length} seeds (bar starts at 0.5 = chance). Seed spread ≤ ${Math.max(...["bag","orderless","orderless_strict","temporal"].filter(c=>t[c]).map(sd)).toFixed(3)}.</p>
       <p style="margin:8px 0 0">${C.verdict?.[k]||""}</p></div>`;}).join("")}</div>`;
@@ -372,7 +371,7 @@ document.addEventListener("submit", async e => {
   btn.disabled = true; msg.textContent = "Unlocking…";
   try{
     const T = await unlockNotes($("#pass").value);
-    renderChecks(T.checks); $("#teamnotes").hidden = false; $("#unlockf").hidden = true; msg.textContent = "";
+    $("#teamtitle").textContent = T.title || ""; $("#teamintro").textContent = T.intro || ""; renderChecks(T.checks); $("#teamnotes").hidden = false; $("#unlockf").hidden = true; msg.textContent = "";
   }catch(err){
     msg.textContent = "That passphrase didn't unlock the notes. Check it and try again.";
   }finally{ btn.disabled = false; }

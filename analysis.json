@@ -56,120 +56,40 @@
     }
    ]
   },
-  "T2_third_party_after_focal": {
-   "n_train": 16698,
-   "n_test": 9335,
-   "pos_rate": 0.802356722013926,
-   "bag": [
-    {
-     "seed": 0,
-     "roc_auc": 0.7359169045629042,
-     "acc": 0.7767541510444563
-    },
-    {
-     "seed": 1,
-     "roc_auc": 0.7351370390873468,
-     "acc": 0.7524370648098554
-    },
-    {
-     "seed": 2,
-     "roc_auc": 0.7387141663138928,
-     "acc": 0.7671130155329405
-    }
-   ],
-   "orderless": [
-    {
-     "seed": 0,
-     "roc_auc": 0.9609181528397394,
-     "acc": 0.9212640599892876
-    },
-    {
-     "seed": 1,
-     "roc_auc": 0.9599730806386836,
-     "acc": 0.9204070701660417
-    },
-    {
-     "seed": 2,
-     "roc_auc": 0.9618653235931558,
-     "acc": 0.9208355650776647
-    }
-   ],
-   "temporal": [
-    {
-     "seed": 0,
-     "roc_auc": 0.9913232096272898,
-     "acc": 0.9577932512051419
-    },
-    {
-     "seed": 1,
-     "roc_auc": 0.9907177772712307,
-     "acc": 0.9546866630958757
-    },
-    {
-     "seed": 2,
-     "roc_auc": 0.9922579699762285,
-     "acc": 0.9591858596679165
-    }
-   ],
-   "orderless_strict": [
-    {
-     "seed": 0,
-     "roc_auc": 0.912778881326864,
-     "acc": 0.8715586502410284
-    },
-    {
-     "seed": 1,
-     "roc_auc": 0.9121767053451576,
-     "acc": 0.8705945366898769
-    },
-    {
-     "seed": 2,
-     "roc_auc": 0.9118601495761286,
-     "acc": 0.8708087841456883
-    }
-   ]
-  },
   "verdict": {
-   "T1_last_third_party": "<b>Passes.</b> Only the in-order model solves it (0.975). Both unordered versions score the same as no order at all (about 0.70), so they cannot see the order of what other characters did. The order machinery works.",
-   "T2_third_party_after_focal": "<b>Leak found, then closed.</b> The original \"unordered\" model reaches 0.961 against 0.737 for no order: it sees when other characters were active relative to A↔B's own events, through the A↔B position numbers. With positions counted among A↔B tokens only, it drops to 0.912. What remains is expected: both unordered versions also know how many scenes ago A and B last interacted."
+   "T1_last_third_party": "<b>The order machinery works.</b> Only the in-order model solves it (0.975). The unordered model scores the same as no order at all (about 0.70), so it cannot see the order of what other characters did."
   }
  },
  "why": [
   {
-   "tag": "Checked",
+   "tag": "Result",
    "v": "v-ok",
-   "h": "A leak in \"unordered\" was real, but it does not explain the result",
-   "b": "Test 2 showed \"unordered\" still saw some timing through the A↔B positions. We closed it and re-ran the real within-movie test: in order minus leak-closed unordered = −0.001 PR-AUC [−0.007, +0.005], all 3 seeds negative. Still no benefit from order."
-  },
-  {
-   "tag": "Not significant",
-   "v": "v-warn",
-   "h": "It is a tie, not a win",
-   "b": "Unordered leads by 0.002 PR-AUC within-movie and 0.003 cross-movie. All three seeds lean the same way, but both 95% intervals reach zero. The honest reading is no benefit from order, with a slight lean against it."
+   "h": "The two versions score the same",
+   "b": "Ordered and unordered differ by 0.002 PR-AUC within films and 0.003 across films, and both 95% intervals include zero. Ordering the events adds no measurable information."
   },
   {
    "tag": "Data",
    "v": "v-warn",
-   "h": "Most of the order is inside a single scene",
-   "b": "68% of neighbouring third-party events in the model's window come from the same scene. Within a scene, events are sorted by timestamp, but summary events have no timestamp and are placed first, and 13% of interactions have none either. Much of what the ordered model is given is annotation order, which carries no story information."
+   "h": "Most of the order falls inside a single scene",
+   "b": "About two thirds of neighbouring events from other characters come from the same scene, where their sequence says little about the story. The order that spans scenes is a smaller signal."
   },
   {
    "tag": "Design",
    "v": "v-warn",
-   "h": "Unordered already knows which events are recent",
-   "b": "Both models see only the latest 48 third-party events, and 79% of windows have more than that. Which events are shown is itself a recency signal, so the unordered model gets most of what order would add."
+   "h": "Both versions already see the most recent events",
+   "b": "Each model reads the latest 48 events involving other characters, so recency is built into both versions. Putting those events in order adds little beyond that."
   },
   {
-   "tag": "Small data",
+   "tag": "Data size",
    "v": "v-warn",
-   "h": "The ordered model has more to learn from the same data",
-   "b": "It learns a position and a time-gap embedding for up to 48 extra tokens, from about 19,000 training windows in 4 epochs. Extra inputs that carry no real signal cost a little accuracy; that is the usual small-data penalty."
+   "h": "51 films is a modest amount of data",
+   "b": "The ordered model has extra position information to learn from about 19,000 training decisions. A larger corpus could reveal order effects that this one cannot."
   },
   {
    "tag": "Where the signal is",
    "v": "v-ok",
-   "h": "Third-party events barely help, so their order cannot help much",
-   "b": "Pair history adds +0.099 PR-AUC over chance and the relationship adds +0.016, both significant. Adding other characters' events adds +0.005, not significant. Order can only refine information that is already weak."
+   "h": "Other characters' events add little, so their order cannot add much",
+   "b": "The pair's own history adds +0.099 PR-AUC over chance and their relationship adds +0.016. Other characters' events add +0.005 on top. Order can only refine information that is already small."
   }
  ]
 }
